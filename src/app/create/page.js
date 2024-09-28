@@ -35,6 +35,12 @@ export default function CreateDevice() {
   };
 
   const handleElementChange = (e, tabId, elementId, field) => {
+    let value = e.target.value;
+    if (['enabled', 'visible', 'readOnly'].includes(field)) {
+      // Convertir a booleano si es necesario
+      value = value === 'true' || value === true;
+    }
+    
     setDevice((prevDevice) => ({
       ...prevDevice,
       tabs: prevDevice.tabs.map((tab) =>
@@ -43,7 +49,7 @@ export default function CreateDevice() {
               ...tab,
               elements: tab.elements.map((element) =>
                 element.id === elementId
-                  ? { ...element, [field]: e.target.value }
+                  ? { ...element, [field]: value }
                   : element
               ),
             }
@@ -120,11 +126,32 @@ export default function CreateDevice() {
     setCurrentTabIndex(newTabId - 1); // Cambia a la nueva tab creada
   };
 
+  // Limpiar el dispositivo antes de enviarlo
+  const cleanDevice = (device) => {
+    return {
+      ...device,
+      numElements: parseInt(device.numElements), // Asegurar que numElements sea un número
+      tabs: device.tabs.map((tab) => ({
+        ...tab,
+        enabled: Boolean(tab.enabled),
+        visible: Boolean(tab.visible),
+        elements: tab.elements.map((element) => ({
+          ...element,
+          enabled: Boolean(element.enabled),
+          visible: Boolean(element.visible),
+          readOnly: Boolean(element.readOnly),
+        })),
+      })),
+    };
+  };
+
   const saveDevice = async () => {
     try {
-      await connect.post('/devices', device);
+      const cleanedDevice = cleanDevice(device);
+      console.log('cleanedDevice:', cleanedDevice);
+      await connect.post('/devices', cleanedDevice);
       alert('Device created successfully!');
-      router.push('/home'); // Redirige al usuario a la página principal después de crear el dispositivo
+      router.push('/home');
     } catch (error) {
       console.error('Failed to create the device:', error);
       alert('Failed to create the device.');
@@ -293,7 +320,7 @@ export default function CreateDevice() {
                     <div>
                       <label className="block text-sm font-medium">Enabled</label>
                       <select
-                        value={element.enabled}
+                        value={element.enabled ? 'true' : 'false'}
                         onChange={(e) =>
                           handleElementChange(e, currentTab.id, element.id, 'enabled')
                         }
@@ -306,7 +333,7 @@ export default function CreateDevice() {
                     <div>
                       <label className="block text-sm font-medium">Visible</label>
                       <select
-                        value={element.visible}
+                        value={element.visible ? 'true' : 'false'}
                         onChange={(e) =>
                           handleElementChange(e, currentTab.id, element.id, 'visible')
                         }
@@ -319,7 +346,7 @@ export default function CreateDevice() {
                     <div>
                       <label className="block text-sm font-medium">ReadOnly</label>
                       <select
-                        value={element.readOnly}
+                        value={element.readOnly ? 'true' : 'false'}
                         onChange={(e) =>
                           handleElementChange(e, currentTab.id, element.id, 'readOnly')
                         }
